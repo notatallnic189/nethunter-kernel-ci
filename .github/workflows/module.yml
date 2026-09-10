@@ -1,0 +1,141 @@
+name: Module build (modkit)
+
+# Build and sign ONE out-of-tree module against a given kernel, without a
+# full device setup. The kernel is built to vmlinux first: MODVERSIONS=y
+# kernels need the Module.symvers from that build, and sign-file plus the
+# signing certs come out of the same run. See docs/SIGNING.md.
+
+on:
+  workflow_call:
+    inputs:
+      kernel_repo:
+        description: Kernel git URL
+        required: true
+        type: string
+      kernel_branch:
+        description: Kernel branch (empty = default branch)
+        required: false
+        type: string
+        default: ""
+      defconfig:
+        description: Defconfig make target (empty = defconfig)
+        required: false
+        type: string
+        default: ""
+      defconfig_file:
+        description: Defconfig file inside THIS repo to install (optional)
+        required: false
+        type: string
+        default: ""
+      device:
+        description: Device dir for patches only, no device.env read (optional)
+        required: false
+        type: string
+        default: ""
+      module:
+        description: Module name under modules/ (e.g. rtl8812au)
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      kernel_repo:
+        description: Kernel git URL
+        required: true
+        default: ""
+      kernel_branch:
+        description: Kernel branch (empty = default branch)
+        required: false
+        default: ""
+      defconfig:
+        description: Defconfig make target (empty = defconfig)
+        required: false
+        default: ""
+      defconfig_file:
+        description: Defconfig file inside THIS repo to install (optional)
+        required: false
+        default: ""
+      device:
+        description: Device dir for patches only (optional)
+        required: false
+        default: ""
+      module:
+        description: Module name under modules/ (e.g. rtl8812au)
+        required: true
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build-module:
+    runs-on: ubuntu-22.04
+    env:
+      KREPO: ${{ inputs.kernel_repo || github.event.inputs.kernel_repo }}
+      KBRANCH: ${{ inputs.kernel_branch || github.event.inputs.kernel_branch }}
+      KDEFCONFIG: ${{ inputs.defconfig || github.event.inputs.defconfig }}
+      KDEFCONFIG_FILE: ${{ inputs.defconfig_file || github.event.inputs.defconfig_file }}
+      KDEVICE: ${{ inputs.device || github.event.inputs.device }}
+      MODULE_SEL: ${{ inputs.module || github.event.inputs.module }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install host build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc flex bison libssl-dev zip
+
+      - name: Build and sign module
+        run: |
+          set -euo pipefail
+          [ -n "$MODULE_SEL" ] || { echo "ERROR: module input is required" >&2; exit 1; }
+          [ -f "modules/${MODULE_SEL}.env" ] \
+            || { echo "ERROR: modules/${MODULE_SEL}.env not found" >&2; exit 1; }
+          [ -n "$KREPO" ] || { echo "ERROR: kernel_repo input is required" >&2; exit 1; }
+          chmod +x lib/*.sh
+
+          export ROOT="$PWD" WORKDIR="$PWD" ARCH=arm64 JOBS="$(nproc)"
+          export PROTON_REPO="${PROTON_REPO:-https://github.com/kdrag0n/proton-clang.git}"
+          ARMTC_REPO="${ARMTC_REPO:-}"
+          KERNEL_REPO="$KREPO"
+          KERNEL_BRANCH="${KBRANCH:-}"
+          DEFCONFIG="${KDEFCONFIG:-defconfig}"
+          DEFCONFIG_FILE="$KDEFCONFIG_FILE"
+          DEVICE="$KDEVICE"
+          KERNEL_IMAGE="vmlinux"
+          export KERNEL_REPO KERNEL_BRANCH DEFCONFIG DEFCONFIG_FILE DEVICE KERNEL_IMAGE
+
+          # shellcheck source=lib/kernel-build.sh
+          source lib/kernel-build.sh
+          # shellcheck source=lib/sign-module.sh
+          source lib/sign-module.sh
+          # shellcheck source=lib/build-module.sh
+          source lib/build-module.sh
+
+          clone_kernel
+          setup_toolchains
+          apply_kernel_patches
+          build_kernel_image
+
+          MODKOS=()
+          build_module "modules/${MODULE_SEL}.env"
+          for k in "${MODKOS[@]}"; do
+            cp "$k" "$(basename "$k")"
+            sha256sum "$(basename "$k")" > "$(basename "$k").sha256"
+          done
+
+      - name: Upload signed module
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.module || inputs.module }}-signed-ko
+          path: |
+            *.ko
+            *.ko.sha256
+          if-no-files-found: error
+
+      - name: Release on tag
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.ko
+            *.ko.sha256

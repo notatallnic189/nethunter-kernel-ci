@@ -1,0 +1,14 @@
+# local build leftovers
+kernel-src/
+proton-clang/
+toolchain-arm/
+AnyKernel3/
+rtl8812au/
+wireguard-linux-compat/
+out/
+*.zip
+*.sha256
+*.ko
+*.o
+*.cmd
+Module.symvers
