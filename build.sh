@@ -55,6 +55,15 @@ MODKOS=()
 for m in $DEVICE_MODULES; do
   [ -f "$ROOT/modules/${m}.env" ] \
     || { echo "ERROR: modules/${m}.env not found (listed in $ENVFILE)" >&2; exit 1; }
+  # Optional skip: set MODULE_BUILTIN_CONFIG=CONFIG_FOO in modules/<m>.env
+  # and the module is not built when the kernel already has it built-in
+  # (e.g. WireGuard on trees whose defconfig sets CONFIG_WIREGUARD=y).
+  builtin_cfg="$(grep -E '^MODULE_BUILTIN_CONFIG=' "$ROOT/modules/${m}.env" \
+    | tail -n1 | cut -d= -f2 | tr -d '"' || true)"
+  if [ -n "$builtin_cfg" ] && grep -q "^${builtin_cfg}=y" "$KSRC/.config"; then
+    echo "[*] module: $m -> SKIPPED (${builtin_cfg}=y already built into the kernel)"
+    continue
+  fi
   echo "[*] module: $m"
   build_module "$ROOT/modules/${m}.env"
 done

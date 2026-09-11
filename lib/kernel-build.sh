@@ -68,6 +68,16 @@ apply_kernel_patches() {
       git -C "$WORKDIR/kernel-src" apply "$p"
     done
   fi
+  # 3. commit the overlay so scripts/setlocalversion reports a clean tree
+  #    (an uncommitted overlay appends -dirty to the kernel release string).
+  #    Fixed dates keep the overlay commit hash stable across CI runs.
+  git -C "$WORKDIR/kernel-src" config user.name "nethunter-kernel-ci"
+  git -C "$WORKDIR/kernel-src" config user.email "ci@users.noreply.github.com"
+  git -C "$WORKDIR/kernel-src" add -A
+  GIT_COMMITTER_DATE="2026-01-01T00:00:00+0000" \
+  GIT_AUTHOR_DATE="2026-01-01T00:00:00+0000" \
+    git -C "$WORKDIR/kernel-src" commit \
+    -qm "CI overlay: defconfig + kernel patches" || true
 }
 
 build_kernel_image() {
