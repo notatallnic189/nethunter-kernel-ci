@@ -1,5 +1,7 @@
 # nethunter-kernel-ci
 
+[![Kernel build](https://github.com/notatallnic189/nethunter-kernel-ci/actions/workflows/kernel.yml/badge.svg?branch=main)](https://github.com/notatallnic189/nethunter-kernel-ci/actions/workflows/kernel.yml)
+
 A batteries-included GitHub Actions template that builds **Kali NetHunter
 kernels** and **signed out-of-tree modules** for Android devices, packages
 them with AnyKernel3, and publishes sha256-verified releases. No local build
