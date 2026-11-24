@@ -42,6 +42,11 @@ Details that matter:
 - `ARMTC_REPO` is optional. Provide it if your kernel needs a real arm32 gcc
   for the vdso build; without it proton-clang's arm-linux-gnueabi- tools are
   used.
+- The `*_REF` variables (kernel, toolchains, AnyKernel3, per-module) pin a
+  source to an exact commit SHA: set them when you want "same repo state,
+  same sources" instead of whatever HEAD happens to be that day. Leave them
+  out to track the branch. The reference device ships with pins, recorded
+  with the branch each SHA was resolved from.
 
 ## Step 3: make the device yours
 

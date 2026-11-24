@@ -22,14 +22,37 @@
 #   KIMAGE_PATH      absolute path of the built image
 #   CC, CROSS_COMPILE, CROSS_COMPILE_ARM32, JOBS
 
+# clone_ref <repo> <sha> <dest>
+# Shallow-fetch exactly the pinned commit. If <dest> already exists (a rerun
+# in the same workspace) it is force-checked out to the pin, so leftover
+# state (a previous overlay commit, a patched module tree) is discarded
+# instead of leaking into the build.
+clone_ref() {
+  local repo="$1" sha="$2" dest="$3"
+  if [ ! -d "$dest/.git" ]; then
+    git init -q "$dest"
+    git -C "$dest" remote add origin "$repo"
+  fi
+  git -C "$dest" fetch -q --depth=1 origin "$sha"
+  git -C "$dest" checkout -f -q --detach FETCH_HEAD
+}
+
 setup_toolchains() {
   PROTON="$WORKDIR/proton-clang"
   echo "[*] cloning toolchains"
-  git clone --depth=1 "${PROTON_REPO:-https://github.com/kdrag0n/proton-clang.git}" "$PROTON"
+  if [ -n "${PROTON_REF:-}" ]; then
+    clone_ref "${PROTON_REPO:-https://github.com/kdrag0n/proton-clang.git}" "$PROTON_REF" "$PROTON"
+  else
+    git clone --depth=1 "${PROTON_REPO:-https://github.com/kdrag0n/proton-clang.git}" "$PROTON"
+  fi
   CC="$PROTON/bin/clang"
   CROSS_COMPILE="$PROTON/bin/aarch64-linux-gnu-"
   if [ -n "${ARMTC_REPO:-}" ]; then
-    git clone --depth=1 "$ARMTC_REPO" "$WORKDIR/toolchain-arm"
+    if [ -n "${ARMTC_REF:-}" ]; then
+      clone_ref "$ARMTC_REPO" "$ARMTC_REF" "$WORKDIR/toolchain-arm"
+    else
+      git clone --depth=1 "$ARMTC_REPO" "$WORKDIR/toolchain-arm"
+    fi
     CROSS_COMPILE_ARM32="$WORKDIR/toolchain-arm/bin/arm-linux-androideabi-"
   else
     # proton-clang ships arm-linux-gnueabi- tools; good enough for most trees
@@ -38,11 +61,16 @@ setup_toolchains() {
 }
 
 clone_kernel() {
-  echo "[*] cloning kernel: ${KERNEL_BRANCH:-<default branch>} @ $KERNEL_REPO"
-  if [ -n "${KERNEL_BRANCH:-}" ]; then
-    git clone --depth=1 --single-branch --branch "$KERNEL_BRANCH" "$KERNEL_REPO" "$WORKDIR/kernel-src"
+  if [ -n "${KERNEL_REF:-}" ]; then
+    echo "[*] cloning kernel @ $KERNEL_REF from $KERNEL_REPO"
+    clone_ref "$KERNEL_REPO" "$KERNEL_REF" "$WORKDIR/kernel-src"
   else
-    git clone --depth=1 "$KERNEL_REPO" "$WORKDIR/kernel-src"
+    echo "[*] cloning kernel: ${KERNEL_BRANCH:-<default branch>} @ $KERNEL_REPO"
+    if [ -n "${KERNEL_BRANCH:-}" ]; then
+      git clone --depth=1 --single-branch --branch "$KERNEL_BRANCH" "$KERNEL_REPO" "$WORKDIR/kernel-src"
+    else
+      git clone --depth=1 "$KERNEL_REPO" "$WORKDIR/kernel-src"
+    fi
   fi
   KSRC="$WORKDIR/kernel-src/out"
 }

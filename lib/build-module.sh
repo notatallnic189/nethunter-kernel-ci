@@ -32,7 +32,11 @@ build_module() {
 
   local moddir="$WORKDIR/$MODULE_NAME"
   echo "[*] cloning module $MODULE_NAME"
-  git clone --depth=1 "$MODULE_REPO" "$moddir"
+  if [ -n "${MODULE_REF:-}" ]; then
+    clone_ref "$MODULE_REPO" "$MODULE_REF" "$moddir"
+  else
+    git clone --depth=1 "$MODULE_REPO" "$moddir"
+  fi
 
   if [ -n "${DEVICE:-}" ] && [ -d "$ROOT/devices/$DEVICE/patches/driver" ]; then
     local p

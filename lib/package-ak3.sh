@@ -13,7 +13,11 @@ package_ak3() {
   local ak3="$WORKDIR/AnyKernel3"
   if [ ! -d "$ak3" ]; then
     echo "[*] cloning AnyKernel3"
-    git clone --depth=1 "${AK3_REPO:-https://github.com/osm0sis/AnyKernel3.git}" "$ak3"
+    if [ -n "${AK3_REF:-}" ]; then
+      clone_ref "${AK3_REPO:-https://github.com/osm0sis/AnyKernel3.git}" "$AK3_REF" "$ak3"
+    else
+      git clone --depth=1 "${AK3_REPO:-https://github.com/osm0sis/AnyKernel3.git}" "$ak3"
+    fi
   fi
   echo "[*] packaging $zipname"
   cp "$image" "$ak3/$(basename "$image")"
