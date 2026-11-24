@@ -9,11 +9,16 @@ on:
   workflow_call:
     inputs:
       kernel_repo:
-        description: Kernel git URL
+        description: Kernel git URL (https:// only)
         required: true
         type: string
       kernel_branch:
         description: Kernel branch (empty = default branch)
+        required: false
+        type: string
+        default: ""
+      kernel_ref:
+        description: Pin the kernel to an exact commit SHA (optional, empty = branch head)
         required: false
         type: string
         default: ""
@@ -39,11 +44,15 @@ on:
   workflow_dispatch:
     inputs:
       kernel_repo:
-        description: Kernel git URL
+        description: Kernel git URL (https:// only)
         required: true
         default: ""
       kernel_branch:
         description: Kernel branch (empty = default branch)
+        required: false
+        default: ""
+      kernel_ref:
+        description: Pin the kernel to an exact commit SHA (optional, empty = branch head)
         required: false
         default: ""
       defconfig:
@@ -64,20 +73,22 @@ on:
         default: ""
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-module:
     runs-on: ubuntu-22.04
+    timeout-minutes: 180
     env:
       KREPO: ${{ inputs.kernel_repo || github.event.inputs.kernel_repo }}
       KBRANCH: ${{ inputs.kernel_branch || github.event.inputs.kernel_branch }}
+      KREF: ${{ inputs.kernel_ref || github.event.inputs.kernel_ref }}
       KDEFCONFIG: ${{ inputs.defconfig || github.event.inputs.defconfig }}
       KDEFCONFIG_FILE: ${{ inputs.defconfig_file || github.event.inputs.defconfig_file }}
       KDEVICE: ${{ inputs.device || github.event.inputs.device }}
       MODULE_SEL: ${{ inputs.module || github.event.inputs.module }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install host build deps
         run: |
@@ -91,6 +102,13 @@ jobs:
           [ -f "modules/${MODULE_SEL}.env" ] \
             || { echo "ERROR: modules/${MODULE_SEL}.env not found" >&2; exit 1; }
           [ -n "$KREPO" ] || { echo "ERROR: kernel_repo input is required" >&2; exit 1; }
+          # https only: the job runs on a token with repo rights, and there is
+          # no good reason to let a plain-HTTP (or ssh/git://) URL build code
+          # that gets released under this project's name
+          case "$KREPO" in
+            https://*) ;;
+            *) echo "ERROR: kernel_repo must be an https:// URL, got: $KREPO" >&2; exit 1 ;;
+          esac
           chmod +x lib/*.sh
 
           export ROOT="$PWD" WORKDIR="$PWD" ARCH=arm64 JOBS="$(nproc)"
@@ -98,11 +116,12 @@ jobs:
           ARMTC_REPO="${ARMTC_REPO:-}"
           KERNEL_REPO="$KREPO"
           KERNEL_BRANCH="${KBRANCH:-}"
+          KERNEL_REF="${KREF:-}"
           DEFCONFIG="${KDEFCONFIG:-defconfig}"
           DEFCONFIG_FILE="$KDEFCONFIG_FILE"
           DEVICE="$KDEVICE"
           KERNEL_IMAGE="vmlinux"
-          export KERNEL_REPO KERNEL_BRANCH DEFCONFIG DEFCONFIG_FILE DEVICE KERNEL_IMAGE
+          export KERNEL_REPO KERNEL_BRANCH KERNEL_REF DEFCONFIG DEFCONFIG_FILE DEVICE KERNEL_IMAGE
 
           # shellcheck source=lib/kernel-build.sh
           source lib/kernel-build.sh
@@ -124,7 +143,7 @@ jobs:
           done
 
       - name: Upload signed module
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ github.event.inputs.module || inputs.module }}-signed-ko
           path: |
@@ -132,9 +151,22 @@ jobs:
             *.ko.sha256
           if-no-files-found: error
 
+  release:
+    needs: build-module
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Collect the signed module
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: "*-signed-ko"
+          merge-multiple: true
+
       - name: Release on tag
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: |
             *.ko
