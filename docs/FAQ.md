@@ -15,7 +15,7 @@ out-of-tree module is not built. Other devices need their own
 `devices/<name>` directory and will likely need toolchain or patch
 adjustments, see
 [ADD-A-DEVICE.md](ADD-A-DEVICE.md) for the three friction points to expect.
-Being honest: this is not a one-size-fits-all builder, it is a template that
+This is not a one-size-fits-all builder, it is a template that
 removes the boring 80 percent and leaves you the device-specific 20.
 
 ## How is this different from the official Kali NetHunter kernel builder?

@@ -98,7 +98,7 @@ into the working directory.
 | rtl8812au | aircrack-ng/rtl8812au | monitor mode + injection on external RTL8812AU class USB adapters | dir |
 | wireguard | WireGuard/wireguard-linux-compat | WireGuard VPN on kernels without in-tree support (3.10 to 5.5) | ksrc |
 
-Both build and sign in the same run as the kernel they load into — with one
+Both build and sign in the same run as the kernel they load into, with one
 deliberate exception on the reference device: the whyred defconfig sets
 `CONFIG_WIREGUARD=y`, so WireGuard is inside the kernel image and the build
 skips the out-of-tree module (the `MODULE_BUILTIN_CONFIG` knob in
