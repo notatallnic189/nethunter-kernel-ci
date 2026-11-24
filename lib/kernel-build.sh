@@ -7,10 +7,13 @@
 # Inputs expected from the caller:
 #   KERNEL_REPO      kernel git URL                     (required)
 #   KERNEL_BRANCH    kernel git branch                  (required)
+#   KERNEL_REF       pin the kernel to an exact commit  (optional, overrides branch)
 #   DEFCONFIG        defconfig make target name         (required)
 #   KERNEL_IMAGE     boot image target, e.g. Image.gz-dtb or vmlinux (required)
 #   PROTON_REPO      clang toolchain git URL            (optional, proton-clang default)
+#   PROTON_REF       pin proton-clang to an exact commit (optional)
 #   ARMTC_REPO       arm32 gcc toolchain git URL        (optional)
+#   ARMTC_REF        pin the arm32 gcc to an exact commit (optional)
 #   ARCH             arm64 by default
 #   ROOT             template repo root (for device defconfig + patches)
 #   DEVICE           device name (optional: no defconfig file, no patches)
