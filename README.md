@@ -9,7 +9,9 @@ environment, no docker images, no self-hosted runners.
 
 **Proven on:** Redmi Note 5 Pro (whyred), kernel 4.4.302, sdm660, LineageOS
 18.1. The `devices/whyred-los18.1` directory is the live reference: the
-released flashable zips are built from exactly the files in it.
+released flashable zips are built from exactly the files in it, with every
+source (kernel tree, toolchains, driver, AnyKernel3) pinned to an exact
+commit SHA.
 
 ## Why this exists
 
@@ -94,9 +96,14 @@ into the working directory.
 | rtl8812au | aircrack-ng/rtl8812au | monitor mode + injection on external RTL8812AU class USB adapters | dir |
 | wireguard | WireGuard/wireguard-linux-compat | WireGuard VPN on kernels without in-tree support (3.10 to 5.5) | ksrc |
 
-Both are signed in the same run as the kernel they load into. The whyred
-device additionally carries the `CONFIG_KERNEL_HAS_NEW_BANDS` rtl8812au patch
-as a worked example of per-device module fixes.
+Both build and sign in the same run as the kernel they load into — with one
+deliberate exception on the reference device: the whyred defconfig sets
+`CONFIG_WIREGUARD=y`, so WireGuard is inside the kernel image and the build
+skips the out-of-tree module (the `MODULE_BUILTIN_CONFIG` knob in
+`modules/wireguard.env` makes that skip automatic, based on the real
+`.config`). The whyred device additionally carries the
+`CONFIG_KERNEL_HAS_NEW_BANDS` rtl8812au patch as a worked example of
+per-device module fixes.
 
 ## Honest limits
 

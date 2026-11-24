@@ -7,9 +7,13 @@ GitHub Actions. If your question is not here, open an issue.
 
 The template is proven on one device end to end: Redmi Note 5 Pro (whyred),
 kernel 4.4.302, sdm660, LineageOS 18.1. The whole pipeline (kernel image,
-signed rtl8812au and WireGuard modules, AnyKernel3 zip, sha256 release) runs
-green from this repository. Other devices need their own `devices/<name>`
-directory and will likely need toolchain or patch adjustments, see
+out-of-tree modules built and signed when the tree actually needs them,
+AnyKernel3 zip, sha256 release) runs green from this repository. On whyred
+that means the signed `88XXau` module plus one deliberate skip: the defconfig
+has `CONFIG_WIREGUARD=y`, so WireGuard is inside the kernel image and the
+out-of-tree module is not built. Other devices need their own
+`devices/<name>` directory and will likely need toolchain or patch
+adjustments, see
 [ADD-A-DEVICE.md](ADD-A-DEVICE.md) for the three friction points to expect.
 Being honest: this is not a one-size-fits-all builder, it is a template that
 removes the boring 80 percent and leaves you the device-specific 20.
