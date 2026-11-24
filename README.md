@@ -64,12 +64,14 @@ are usually left to hand-rolling:
 release with zip + sha256 attached.
 
 **Call it from your own repo:** `kernel.yml` and `module.yml` are
-`workflow_call` reusable workflows:
+`workflow_call` reusable workflows. Pin them to a tag (or a full commit SHA,
+the most exact): `@main` means every run silently follows whatever the
+branch is that day, and the build you audited is not the build you get.
 
 ```yaml
 jobs:
   kernel:
-    uses: notatallnic189/nethunter-kernel-ci/.github/workflows/kernel.yml@main
+    uses: notatallnic189/nethunter-kernel-ci/.github/workflows/kernel.yml@v1.0.0
     with:
       device: whyred-los18.1
 ```
@@ -77,7 +79,7 @@ jobs:
 ```yaml
 jobs:
   module:
-    uses: notatallnic189/nethunter-kernel-ci/.github/workflows/module.yml@main
+    uses: notatallnic189/nethunter-kernel-ci/.github/workflows/module.yml@v1.0.0
     with:
       kernel_repo: https://github.com/LineageOS/android_kernel_xiaomi_sdm660.git
       kernel_branch: lineage-18.1
@@ -105,7 +107,7 @@ skips the out-of-tree module (the `MODULE_BUILTIN_CONFIG` knob in
 `CONFIG_KERNEL_HAS_NEW_BANDS` rtl8812au patch as a worked example of
 per-device module fixes.
 
-## Honest limits
+## Known limits
 
 - Proven end to end on one SoC generation: 4.4 / sdm660. Other kernel
   versions may need toolchain or patch adjustments; [docs/ADD-A-DEVICE.md](docs/ADD-A-DEVICE.md)
@@ -116,6 +118,12 @@ per-device module fixes.
 - Internal WiFi chips on modern SoCs cannot do monitor mode (firmware
   limitation). External adapters over USB OTG are the way, which is why
   rtl8812au ships here.
+- The reference defconfig makes trade-offs a reviewer should see coming:
+  the regulatory-domain bypass that monitor mode requires
+  (`CFG80211_CERTIFICATION_ONUS`, `CFG80211_INTERNAL_REGDB`), paranoid
+  networking off, `IKCONFIG` exposed via /proc. The
+  [whyred kernel README](https://github.com/notatallnic189/whyred-nethunter-kernel)
+  lists them with the reasoning; carry the same list when you port a device.
 - Not affiliated with Offensive Security or the Kali NetHunter project. All
   their tooling is linked above and worth reading.
 
